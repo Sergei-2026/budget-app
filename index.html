@@ -1065,6 +1065,16 @@ self.addEventListener('fetch',e=>{const url=new URL(e.request.url);if(url.pathna
   if (btn) { btn.textContent = '🌐 Опубликовать'; btn.disabled = false; }
 }
 
+function renderCloudSyncUI() {
+  const on = isGistOn();
+  document.getElementById('gistSetupForm').style.display = on ? 'none'  : 'block';
+  document.getElementById('gistConnected').style.display = on ? 'block' : 'none';
+  if (on) {
+    document.getElementById('gistIdDisplay').textContent = getGistId();
+    renderPagesSection();
+  }
+}
+
 function renderPagesSection() {
   const el = document.getElementById('pagesSection');
   if (!el) return;
