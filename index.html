@@ -606,8 +606,8 @@ const LS_DIRTY   = 'budget_tx_dirty';
 const CFG_TOKEN    = 'budget_gh_token';
 const CFG_GIST_ID  = 'budget_gist_id';
 const CFG_PAGES_URL = 'budget_pages_url';
-// Gist ID встроен — при первом открытии поле заполняется автоматически
-const PRESET_GIST_ID = 'ff7401f7f70f0f79abbc9b2a156928ad';
+// Публичный Gist — данные читаются без токена, токен нужен только для записи
+const PRESET_GIST_ID = 'ce71a320d0734d3671874f88a1fa9a5b';
 const getToken    = () => localStorage.getItem(CFG_TOKEN)    || '';
 const getGistId   = () => localStorage.getItem(CFG_GIST_ID)  || '';
 const getPagesUrl = () => localStorage.getItem(CFG_PAGES_URL) || '';
@@ -657,6 +657,19 @@ async function ghCall(method, path, body) {
 
 async function gistGet() {
   const g = await ghCall('GET', `/gists/${getGistId()}`);
+  const d = JSON.parse(g.files?.['budget.json']?.content || '{}');
+  return { transactions: d.transactions || [], deleted: d.deleted || [] };
+}
+
+// Чтение публичного Gist без токена — для PWA и первого запуска
+async function gistGetPublic() {
+  const id = getGistId() || PRESET_GIST_ID;
+  const r  = await fetch('https://api.github.com/gists/' + id, {
+    cache: 'no-store',
+    headers: { 'X-GitHub-Api-Version': '2022-11-28', 'User-Agent': 'BudgetApp' },
+  });
+  if (!r.ok) throw new Error(r.status);
+  const g = await r.json();
   const d = JSON.parse(g.files?.['budget.json']?.content || '{}');
   return { transactions: d.transactions || [], deleted: d.deleted || [] };
 }
@@ -737,12 +750,12 @@ async function loadData() {
   deletedIds   = localDel;
   if (localTxs.length > 0) renderAll();
 
-  if (isGistOn()) {
+  if (isGistOn() || PRESET_GIST_ID) {
     try {
-      const remote  = await gistGet();
+      const remote = isGistOn() ? await gistGet() : await gistGetPublic();
       const { transactions: merged, deleted: mergedDel } =
         mergeData(localTxs, localDel, remote.transactions, remote.deleted);
-      const needsPush = idsStr(merged) !== idsStr(remote.transactions);
+      const needsPush = isGistOn() && idsStr(merged) !== idsStr(remote.transactions);
       transactions = merged; deletedIds = mergedDel;
       lsSave(); localStorage.removeItem(LS_DIRTY);
       if (needsPush) await gistPut({ transactions: merged, deleted: mergedDel });
@@ -811,13 +824,13 @@ function startAutoSync() {
   async function doSync() {
     const dirty = localStorage.getItem(LS_DIRTY) === '1';
 
-    if (isGistOn()) {
+    if (isGistOn() || PRESET_GIST_ID) {
       try {
-        const remote = await gistGet();
+        const remote = isGistOn() ? await gistGet() : await gistGetPublic();
         const { transactions: merged, deleted: mergedDel } =
           mergeData(transactions, deletedIds, remote.transactions, remote.deleted);
         const clientOld = idsStr(merged) !== idsStr(transactions);
-        const remoteOld = idsStr(merged) !== idsStr(remote.transactions) || dirty;
+        const remoteOld = isGistOn() && (idsStr(merged) !== idsStr(remote.transactions) || dirty);
         if (clientOld) { transactions = merged; deletedIds = mergedDel; lsSave(); renderAll(); }
         if (remoteOld) { await gistPut({ transactions: merged, deleted: mergedDel }); localStorage.removeItem(LS_DIRTY); }
         setServerStatus(true, 'gist');
