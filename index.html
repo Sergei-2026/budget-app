@@ -645,10 +645,15 @@ async function ghProxy(method, path, body) {
   return data;
 }
 
-// Пробуем прямо, при ошибке — через прокси
+// Прокси нужен только в домашней сети (когда запущен локальный сервер)
+const isLocalNetwork = () => /^(localhost|127\.|192\.|10\.|172\.)/.test(location.hostname);
+
 async function ghCall(method, path, body) {
   try { return await ghFetch(method, path, body); }
-  catch(e) { return await ghProxy(method, path, body); }
+  catch(e) {
+    if (isLocalNetwork()) return await ghProxy(method, path, body);
+    throw e;
+  }
 }
 
 async function gistGet() {
