@@ -455,8 +455,8 @@
           <input type="password" id="ghToken" placeholder="ghp_..." style="font-size:14px;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;width:100%">
         </div>
         <div class="form-row">
-          <label>Gist ID <span style="color:var(--muted);font-weight:400">(оставьте пустым чтобы создать новое)</span></label>
-          <input type="text" id="ghGistId" placeholder="оставьте пустым" style="font-size:14px;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;width:100%">
+          <label>Gist ID <span style="color:var(--muted);font-weight:400">(заполнен автоматически)</span></label>
+          <input type="text" id="ghGistId" placeholder="заполнится автоматически" style="font-size:14px;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;width:100%">
         </div>
         <button id="btnConnectGist" onclick="setupCloudSync()"
           style="width:100%;padding:13px;background:var(--blue2);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;">
@@ -607,6 +607,8 @@ const LS_DIRTY   = 'budget_tx_dirty';
 const CFG_TOKEN    = 'budget_gh_token';
 const CFG_GIST_ID  = 'budget_gist_id';
 const CFG_PAGES_URL = 'budget_pages_url';
+// Gist ID встроен — при первом открытии поле заполняется автоматически
+const PRESET_GIST_ID = 'ff7401f7f70f0f79abbc9b2a156928ad';
 const getToken    = () => localStorage.getItem(CFG_TOKEN)    || '';
 const getGistId   = () => localStorage.getItem(CFG_GIST_ID)  || '';
 const getPagesUrl = () => localStorage.getItem(CFG_PAGES_URL) || '';
@@ -1116,6 +1118,11 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('txDate').value = toDateInput(now);
 
   setType('expense');
+  // Автозаполнение Gist ID если ещё не настроен
+  if (!getGistId() && PRESET_GIST_ID) {
+    const inp = document.getElementById('ghGistId');
+    if (inp) inp.value = PRESET_GIST_ID;
+  }
   renderCloudSyncUI();
   await loadData();
   startAutoSync();
