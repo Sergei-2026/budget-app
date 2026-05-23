@@ -1,0 +1,1449 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="theme-color" content="#1F4E79">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Бюджет">
+  <link rel="manifest" href="manifest.json">
+  <title>Личный бюджет</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    :root {
+      --blue:    #1F4E79;
+      --blue2:   #2E75B6;
+      --green:   #375623;
+      --green2:  #C6EFCE;
+      --red:     #C00000;
+      --red2:    #FFC7CE;
+      --yellow:  #FFF2CC;
+      --gray:    #F5F5F5;
+      --border:  #DDD;
+      --text:    #222;
+      --muted:   #888;
+      --radius:  12px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--gray);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 80px;
+    }
+
+    /* ── Шапка ── */
+    header {
+      background: var(--blue);
+      color: #fff;
+      padding: 16px 20px 12px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    header h1 { font-size: 18px; font-weight: 700; }
+    header .month { font-size: 13px; opacity: .75; margin-top: 2px; }
+
+    /* ── Баланс карточка ── */
+    .balance-card {
+      background: var(--blue2);
+      color: #fff;
+      margin: 16px 16px 0;
+      border-radius: var(--radius);
+      padding: 18px 20px;
+    }
+    .balance-card .label { font-size: 12px; opacity: .8; margin-bottom: 4px; }
+    .balance-card .amount { font-size: 28px; font-weight: 700; letter-spacing: -.5px; }
+    .balance-row { display: flex; gap: 12px; margin: 8px 16px 0; }
+    .mini-card {
+      flex: 1;
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      font-size: 13px;
+    }
+    .mini-card.inc { background: var(--green2); color: var(--green); }
+    .mini-card.exp { background: var(--red2);   color: var(--red); }
+    .mini-card .mc-label { font-size: 11px; opacity: .8; }
+    .mini-card .mc-val   { font-size: 17px; font-weight: 700; margin-top: 2px; }
+
+    /* ── Секции ── */
+    section { margin: 16px 16px 0; }
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-bottom: 8px;
+    }
+
+    /* ── Быстрый ввод ── */
+    .quick-form {
+      background: #fff;
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    }
+
+    .type-toggle {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .type-btn {
+      flex: 1;
+      padding: 11px;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      background: #fff;
+      transition: all .15s;
+    }
+    .type-btn.income.active  { background: var(--green2); border-color: var(--green); color: var(--green); }
+    .type-btn.expense.active { background: var(--red2);   border-color: var(--red);   color: var(--red); }
+
+    .form-row { margin-bottom: 12px; }
+    .form-row label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    .form-row input,
+    .form-row select {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 16px;
+      background: #fff;
+      color: var(--text);
+      -webkit-appearance: none;
+    }
+    .form-row input:focus,
+    .form-row select:focus {
+      outline: none;
+      border-color: var(--blue2);
+    }
+
+    /* Большое поле суммы */
+    #amount {
+      font-size: 24px;
+      font-weight: 700;
+      text-align: right;
+      letter-spacing: -.5px;
+    }
+
+    .btn-add {
+      width: 100%;
+      padding: 14px;
+      background: var(--blue2);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 4px;
+      transition: background .15s;
+    }
+    .btn-add:active { background: var(--blue); }
+
+    /* Супермаркет-кнопка */
+    .supermarket-btn {
+      width: 100%;
+      padding: 11px;
+      background: var(--yellow);
+      color: #7A6000;
+      border: 1.5px solid #E0C000;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 14px;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .supermarket-btn span { font-size: 20px; }
+
+    /* ── Список транзакций ── */
+    .tx-list { display: flex; flex-direction: column; gap: 8px; }
+    .tx-item {
+      background: #fff;
+      border-radius: 10px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
+      position: relative;
+    }
+    .tx-icon {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .tx-icon.inc { background: var(--green2); }
+    .tx-icon.exp { background: var(--red2); }
+    .tx-icon.sup { background: var(--yellow); }
+    .tx-info { flex: 1; min-width: 0; }
+    .tx-cat  { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tx-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .tx-amount { font-size: 16px; font-weight: 700; flex-shrink: 0; }
+    .tx-amount.inc { color: var(--green); }
+    .tx-amount.exp { color: var(--red); }
+    .tx-del {
+      position: absolute;
+      right: 4px; top: 4px;
+      background: none; border: none;
+      color: var(--muted); font-size: 16px;
+      cursor: pointer; padding: 4px 6px;
+      line-height: 1;
+    }
+
+    /* ── Нижняя навигация ── */
+    nav {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: #fff;
+      border-top: 1px solid var(--border);
+      display: flex;
+      z-index: 200;
+    }
+    .nav-btn {
+      flex: 1;
+      padding: 10px 0 8px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      font-size: 10px;
+      color: var(--muted);
+      transition: color .15s;
+    }
+    .nav-btn .icon { font-size: 22px; line-height: 1; }
+    .nav-btn.active { color: var(--blue2); }
+
+    /* ── Страницы ── */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ── История (таблица) ── */
+    .filter-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .filter-row select {
+      flex: 1;
+      padding: 9px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      -webkit-appearance: none;
+    }
+
+    /* ── Аналитика ── */
+    .stat-cards { display: flex; flex-direction: column; gap: 10px; }
+    .stat-card {
+      background: #fff;
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    }
+    .stat-card h3 { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--gray);
+      font-size: 14px;
+    }
+    .stat-row:last-child { border-bottom: none; }
+    .stat-row .bar-wrap { flex: 1; margin: 0 10px; height: 6px; background: var(--gray); border-radius: 3px; overflow: hidden; }
+    .stat-row .bar      { height: 100%; border-radius: 3px; background: var(--red2); }
+    .stat-row .val      { font-weight: 700; font-size: 13px; min-width: 70px; text-align: right; }
+
+    /* ── Экспорт ── */
+    .export-area {
+      background: #fff;
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    }
+    .btn-export {
+      width: 100%;
+      padding: 13px;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+    .btn-export.csv  { background: var(--green2); color: var(--green); }
+    .btn-export.json { background: var(--yellow);  color: #7A6000; }
+    .btn-export.clr  { background: var(--red2);   color: var(--red); }
+
+    .toast {
+      position: fixed;
+      bottom: 90px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: #333; color: #fff;
+      padding: 10px 20px;
+      border-radius: 24px;
+      font-size: 14px;
+      opacity: 0;
+      transition: all .3s;
+      pointer-events: none;
+      z-index: 999;
+      white-space: nowrap;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    .empty-state {
+      text-align: center;
+      padding: 32px 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .empty-state .emoji { font-size: 40px; display: block; margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start">
+    <div>
+      <h1>💰 Личный бюджет</h1>
+      <div class="month" id="headerMonth"></div>
+      <div id="serverStatus" style="font-size:11px;opacity:.8;margin-top:2px;">● подключение…</div>
+    </div>
+    <button onclick="manualSync()" id="syncBtn"
+      style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);
+             color:#fff;border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer;
+             margin-top:2px;white-space:nowrap">
+      🔄 Обновить
+    </button>
+  </div>
+</header>
+
+<!-- ── СТРАНИЦА: ГЛАВНАЯ ── -->
+<div class="page active" id="page-home">
+  <div class="balance-card">
+    <div class="label">Баланс за месяц</div>
+    <div class="amount" id="balanceAmt">0 ₽</div>
+  </div>
+  <div class="balance-row">
+    <div class="mini-card inc">
+      <div class="mc-label">Доходы</div>
+      <div class="mc-val" id="incomeAmt">0 ₽</div>
+    </div>
+    <div class="mini-card exp">
+      <div class="mc-label">Расходы</div>
+      <div class="mc-val" id="expenseAmt">0 ₽</div>
+    </div>
+  </div>
+
+  <section>
+    <div class="section-title">Последние записи</div>
+    <div class="tx-list" id="recentList">
+      <div class="empty-state"><span class="emoji">📋</span>Пока нет записей</div>
+    </div>
+  </section>
+</div>
+
+<!-- ── СТРАНИЦА: ДОБАВИТЬ ── -->
+<div class="page" id="page-add">
+  <section>
+    <div class="section-title">Новая запись</div>
+    <div class="quick-form">
+
+      <!-- Быстрая кнопка для супермаркета -->
+      <button class="supermarket-btn" onclick="quickSupermarket()">
+        <span>🛒</span> Быстро: Супермаркет / Гипермаркет
+      </button>
+
+      <div class="type-toggle">
+        <button class="type-btn expense active" id="btnExpense" onclick="setType('expense')">− Расход</button>
+        <button class="type-btn income"          id="btnIncome"  onclick="setType('income')">+ Доход</button>
+      </div>
+
+      <div class="form-row">
+        <label>Сумма</label>
+        <input type="number" id="amount" placeholder="0" inputmode="decimal" min="0" step="0.01">
+      </div>
+
+      <div class="form-row">
+        <label>Категория</label>
+        <select id="category"></select>
+      </div>
+
+      <div class="form-row">
+        <label>Описание / Магазин (необязательно)</label>
+        <input type="text" id="description" placeholder="Лента, ТЦ Мега…">
+      </div>
+
+      <div class="form-row">
+        <label>Дата</label>
+        <input type="date" id="txDate">
+      </div>
+
+      <button class="btn-add" onclick="addTransaction()">Добавить запись</button>
+    </div>
+  </section>
+</div>
+
+<!-- ── СТРАНИЦА: ИСТОРИЯ ── -->
+<div class="page" id="page-history">
+  <section>
+    <div class="section-title">История</div>
+    <div class="filter-row">
+      <select id="filterMonth" onchange="renderHistory()"></select>
+      <select id="filterType" onchange="renderHistory()">
+        <option value="">Все</option>
+        <option value="income">Доходы</option>
+        <option value="expense">Расходы</option>
+      </select>
+    </div>
+    <div class="tx-list" id="historyList"></div>
+  </section>
+</div>
+
+<!-- ── СТРАНИЦА: АНАЛИТИКА ── -->
+<div class="page" id="page-stats">
+  <section>
+    <div class="section-title">Аналитика</div>
+    <div class="stat-cards" id="statCards"></div>
+  </section>
+</div>
+
+<!-- ── СТРАНИЦА: ЭКСПОРТ ── -->
+<div class="page" id="page-export">
+  <section>
+    <div class="section-title">Экспорт данных</div>
+    <div class="export-area">
+      <p style="font-size:14px;color:var(--muted);margin-bottom:14px;">
+        Экспорт в CSV — можно открыть в Excel или импортировать в таблицу бюджета.
+      </p>
+      <button class="btn-export csv"  onclick="exportCSV()">📥 Скачать CSV (Excel)</button>
+      <button class="btn-export json" onclick="exportJSON()">📦 Резервная копия JSON</button>
+      <button class="btn-export json" style="background:#E8F4FD;color:#1F4E79;" onclick="importJSON()">📤 Восстановить из JSON</button>
+      <input type="file" id="importFile" accept=".json" style="display:none" onchange="handleImport(event)">
+      <hr style="margin:16px 0;border:none;border-top:1px solid var(--border);">
+      <button class="btn-export clr" onclick="clearData()">🗑 Очистить все данные</button>
+    </div>
+
+    <!-- ── Облачная синхронизация ── -->
+    <div class="export-area" style="margin-top:16px;">
+      <div style="font-size:13px;font-weight:700;color:var(--blue);margin-bottom:10px;">☁️ Облачная синхронизация</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">
+        Данные хранятся в GitHub Gist — доступны с любого телефона без Wi-Fi и без компьютера.
+      </p>
+
+      <!-- Форма настройки (показывается когда не подключено) -->
+      <div id="gistSetupForm">
+        <div class="form-row">
+          <label>GitHub токен <a href="https://github.com/settings/tokens/new?scopes=gist" target="_blank" style="color:var(--blue2);font-size:11px;">получить →</a></label>
+          <input type="password" id="ghToken" placeholder="ghp_..." style="font-size:14px;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;width:100%">
+        </div>
+        <div class="form-row">
+          <label>Gist ID <span style="color:var(--muted);font-weight:400">(оставьте пустым чтобы создать новое)</span></label>
+          <input type="text" id="ghGistId" placeholder="оставьте пустым" style="font-size:14px;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;width:100%">
+        </div>
+        <button id="btnConnectGist" onclick="setupCloudSync()"
+          style="width:100%;padding:13px;background:var(--blue2);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;">
+          Подключить облако
+        </button>
+      </div>
+
+      <!-- Статус (показывается когда подключено) -->
+      <div id="gistConnected" style="display:none">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+          <span style="color:#4CAF50;font-size:18px;">✅</span>
+          <span style="font-size:14px;font-weight:600;">Облако подключено</span>
+        </div>
+        <div style="background:#F0F7FF;border-radius:8px;padding:12px;margin-bottom:12px;">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Gist ID (дай это второму телефону):</div>
+          <div id="gistIdDisplay" style="font-size:13px;font-weight:700;word-break:break-all;color:var(--blue)"></div>
+        </div>
+
+        <!-- Блок публикации на GitHub Pages -->
+        <div id="pagesSection" style="margin-bottom:12px;"></div>
+
+        <button onclick="copyGistLink()"
+          style="width:100%;padding:11px;background:#E8F4FD;color:var(--blue);border:1.5px solid #BDD7EE;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:8px;">
+          📋 Скопировать Gist ID
+        </button>
+        <button onclick="disconnectGist()"
+          style="width:100%;padding:11px;background:var(--red2);color:var(--red);border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">
+          Отключить облако
+        </button>
+      </div>
+    </div>
+
+    <section style="margin-top:0;">
+      <div class="section-title" style="margin-top:16px;">Всего записей: <span id="totalCount">0</span></div>
+    </section>
+  </section>
+</div>
+
+<!-- ── Навигация ── -->
+<nav>
+  <button class="nav-btn active" id="nav-home"   onclick="showPage('home')">
+    <span class="icon">🏠</span>Главная
+  </button>
+  <button class="nav-btn" id="nav-add"    onclick="showPage('add')">
+    <span class="icon">➕</span>Добавить
+  </button>
+  <button class="nav-btn" id="nav-history" onclick="showPage('history')">
+    <span class="icon">📋</span>История
+  </button>
+  <button class="nav-btn" id="nav-stats"  onclick="showPage('stats')">
+    <span class="icon">📊</span>Анализ
+  </button>
+  <button class="nav-btn" id="nav-export" onclick="showPage('export')">
+    <span class="icon">💾</span>Экспорт
+  </button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// КАТЕГОРИИ
+// ═══════════════════════════════════════════════════════
+const INCOME_CATS = [
+  "Зарплата (основная)",
+  "Подработка / фриланс",
+  "Премия / бонус",
+  "Социальные выплаты",
+  "Проценты / инвестиции",
+  "Подарки / прочие доходы",
+];
+
+const EXPENSE_CATS = [
+  // Питание
+  "Супермаркет / гипермаркет",
+  "Продукты (малые покупки)",
+  "Кафе и рестораны",
+  // Жильё
+  "Аренда / ипотека",
+  "Коммунальные услуги",
+  "Интернет и связь",
+  "Ремонт / мебель",
+  // Транспорт
+  "Общественный транспорт",
+  "Такси",
+  "Авто (топливо, парковка)",
+  // Здоровье
+  "Медицина / аптека",
+  "Спорт и фитнес",
+  // Личное
+  "Одежда и обувь",
+  "Косметика / гигиена",
+  "Образование / курсы",
+  // Досуг
+  "Развлечения / хобби",
+  "Подписки (стриминг и др.)",
+  "Путешествия / отдых",
+  // Финансы
+  "Кредит / долг",
+  "Накопления / инвестиции",
+  "Прочие расходы",
+];
+
+const CAT_ICONS = {
+  "Супермаркет / гипермаркет": "🛒",
+  "Продукты (малые покупки)":  "🥦",
+  "Кафе и рестораны":          "☕",
+  "Аренда / ипотека":          "🏠",
+  "Коммунальные услуги":       "💡",
+  "Интернет и связь":          "📡",
+  "Ремонт / мебель":           "🔧",
+  "Общественный транспорт":    "🚌",
+  "Такси":                     "🚕",
+  "Авто (топливо, парковка)":  "⛽",
+  "Медицина / аптека":         "💊",
+  "Спорт и фитнес":            "🏋️",
+  "Одежда и обувь":            "👗",
+  "Косметика / гигиена":       "🧴",
+  "Образование / курсы":       "📚",
+  "Развлечения / хобби":       "🎮",
+  "Подписки (стриминг и др.)": "📺",
+  "Путешествия / отдых":       "✈️",
+  "Кредит / долг":             "💳",
+  "Накопления / инвестиции":   "📈",
+  "Прочие расходы":            "📦",
+  "Зарплата (основная)":       "💼",
+  "Подработка / фриланс":      "💻",
+  "Премия / бонус":            "🎯",
+  "Социальные выплаты":        "🏛️",
+  "Проценты / инвестиции":     "📈",
+  "Подарки / прочие доходы":   "🎁",
+};
+
+// ═══════════════════════════════════════════════════════
+// СОСТОЯНИЕ + API + РЕЗЕРВНОЕ ХРАНИЛИЩЕ
+// ═══════════════════════════════════════════════════════
+let currentType  = 'expense';
+let transactions = [];
+let deletedIds   = [];        // tombstones — ID удалённых записей для синхронизации
+let serverOnline = false;
+
+const API        = '/api/data';
+const LS_KEY     = 'budget_tx';
+const LS_DELETED = 'budget_deleted';
+const LS_DIRTY   = 'budget_tx_dirty';
+
+// ── GitHub Gist (облачное хранилище) ────────────────────────────────
+const CFG_TOKEN    = 'budget_gh_token';
+const CFG_GIST_ID  = 'budget_gist_id';
+const CFG_PAGES_URL = 'budget_pages_url';
+const getToken    = () => localStorage.getItem(CFG_TOKEN)    || '';
+const getGistId   = () => localStorage.getItem(CFG_GIST_ID)  || '';
+const getPagesUrl = () => localStorage.getItem(CFG_PAGES_URL) || '';
+const isGistOn    = () => !!(getToken() && getGistId());
+
+const GIST_HEADERS = () => ({
+  'Authorization': `Bearer ${getToken()}`,
+  'X-GitHub-Api-Version': '2022-11-28',
+  'Content-Type': 'application/json',
+});
+
+// Прямой запрос к GitHub (когда телефон имеет интернет)
+async function ghFetch(method, path, body) {
+  const r = await fetch('https://api.github.com' + path, {
+    method, headers: GIST_HEADERS(), cache: 'no-store',
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!r.ok) throw new Error(r.status);
+  return r.json();
+}
+
+// Через прокси локального сервера (когда телефон в домашней сети)
+async function ghProxy(method, path, body) {
+  const r = await fetch('/api/gist', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ method, path, token: getToken(), body }),
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    const msg = data.message || String(r.status);
+    throw new Error(msg + ' [' + r.status + ']');
+  }
+  return data;
+}
+
+// Пробуем прямо, при ошибке — через прокси
+async function ghCall(method, path, body) {
+  try { return await ghFetch(method, path, body); }
+  catch(e) { return await ghProxy(method, path, body); }
+}
+
+async function gistGet() {
+  const g = await ghCall('GET', `/gists/${getGistId()}`);
+  const d = JSON.parse(g.files?.['budget.json']?.content || '{}');
+  return { transactions: d.transactions || [], deleted: d.deleted || [] };
+}
+
+async function gistPut(payload) {
+  await ghCall('PATCH', `/gists/${getGistId()}`, {
+    files: { 'budget.json': { content: JSON.stringify({
+      transactions: payload.transactions, deleted: payload.deleted, updatedAt: Date.now()
+    })}}
+  });
+}
+
+async function gistCreate() {
+  const g = await ghCall('POST', '/gists', {
+    description: 'Личный бюджет — синхронизация',
+    public: false,
+    files: { 'budget.json': { content: JSON.stringify(
+      { transactions, deleted: deletedIds, updatedAt: Date.now() }
+    )}},
+  });
+  return g.id;
+}
+
+// ── localStorage ─────────────────────────────────────────────────────
+function lsSave() {
+  try {
+    localStorage.setItem(LS_KEY,     JSON.stringify(transactions));
+    localStorage.setItem(LS_DELETED, JSON.stringify(deletedIds));
+  } catch(e) {}
+}
+
+function lsLoad() {
+  try {
+    const txRaw  = localStorage.getItem(LS_KEY);
+    const delRaw = localStorage.getItem(LS_DELETED);
+    return {
+      transactions: txRaw  ? JSON.parse(txRaw)  : [],
+      deleted:      delRaw ? JSON.parse(delRaw) : [],
+    };
+  } catch(e) { return { transactions: [], deleted: [] }; }
+}
+
+// ── Слияние данных двух устройств ────────────────────────────────────
+// Объединяет транзакции по ID, исключая удалённые (tombstones)
+function mergeData(localTxs, localDel, serverTxs, serverDel) {
+  const allDeleted = new Set([...localDel, ...serverDel]);
+  const map = new Map();
+  for (const tx of [...serverTxs, ...localTxs]) {
+    if (!allDeleted.has(tx.id) && !map.has(tx.id)) {
+      map.set(tx.id, tx);
+    }
+  }
+  const merged = [...map.values()].sort((a, b) => b.id - a.id);
+  return { transactions: merged, deleted: [...allDeleted] };
+}
+
+// Возвращает строку из отсортированных ID для быстрого сравнения
+function idsStr(txs) { return txs.map(t => t.id).sort().join(','); }
+
+// ── Индикатор статуса ─────────────────────────────────────────────────
+function setServerStatus(online, source) {
+  serverOnline = online;
+  const el = document.getElementById('serverStatus');
+  if (!el) return;
+  if (online) {
+    el.textContent = source === 'gist' ? '☁️ облако' : '● онлайн (Wi-Fi)';
+    el.style.color = '#4CAF50';
+  } else {
+    el.textContent = '● офлайн — данные сохранены локально';
+    el.style.color = '#FF9800';
+  }
+}
+
+// ── Загрузка: localStorage → Gist (если настроен) → локальный сервер ─
+async function loadData() {
+  const { transactions: localTxs, deleted: localDel } = lsLoad();
+  transactions = localTxs;
+  deletedIds   = localDel;
+  if (localTxs.length > 0) renderAll();
+
+  if (isGistOn()) {
+    try {
+      const remote  = await gistGet();
+      const { transactions: merged, deleted: mergedDel } =
+        mergeData(localTxs, localDel, remote.transactions, remote.deleted);
+      const needsPush = idsStr(merged) !== idsStr(remote.transactions);
+      transactions = merged; deletedIds = mergedDel;
+      lsSave(); localStorage.removeItem(LS_DIRTY);
+      if (needsPush) await gistPut({ transactions: merged, deleted: mergedDel });
+      setServerStatus(true, 'gist');
+      renderAll();
+      return;
+    } catch(e) { setServerStatus(false); }
+  }
+
+  // Резервный вариант — локальный сервер (когда компьютер в той же сети)
+  try {
+    const r   = await fetch(API + '?_t=' + Date.now(), { cache: 'no-store', signal: AbortSignal.timeout(4000) });
+    const raw = await r.json();
+    const serverTxs = Array.isArray(raw) ? raw : (raw.transactions || []);
+    const serverDel = Array.isArray(raw) ? [] : (raw.deleted      || []);
+    const { transactions: merged, deleted: mergedDel } = mergeData(localTxs, localDel, serverTxs, serverDel);
+    const serverOutdated = idsStr(merged) !== idsStr(serverTxs);
+    transactions = merged; deletedIds = mergedDel;
+    lsSave(); localStorage.removeItem(LS_DIRTY);
+    if (serverOutdated) await pushToServer();
+    setServerStatus(true, 'local');
+  } catch(e) { setServerStatus(false); }
+  renderAll();
+}
+
+// ── Сохранение: localStorage → Gist (приоритет) → локальный сервер ──
+async function saveData() {
+  lsSave();
+  const payload = { transactions, deleted: deletedIds };
+
+  if (isGistOn()) {
+    try {
+      await gistPut(payload);
+      localStorage.removeItem(LS_DIRTY);
+      setServerStatus(true, 'gist');
+      return;
+    } catch(e) {
+      localStorage.setItem(LS_DIRTY, '1');
+      setServerStatus(false);
+      return;
+    }
+  }
+
+  try {
+    await pushToServer();
+    localStorage.removeItem(LS_DIRTY);
+    setServerStatus(true, 'local');
+  } catch(e) {
+    localStorage.setItem(LS_DIRTY, '1');
+    setServerStatus(false);
+  }
+}
+
+async function pushToServer() {
+  const r = await fetch(API, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ transactions, deleted: deletedIds, updatedAt: Date.now() }),
+    signal:  AbortSignal.timeout(4000),
+  });
+  if (!r.ok) throw new Error('Server error');
+}
+
+// ── Автосинхронизация: Gist каждые 30 сек, Wi-Fi каждые 5 сек ───────
+function startAutoSync() {
+  async function doSync() {
+    const dirty = localStorage.getItem(LS_DIRTY) === '1';
+
+    if (isGistOn()) {
+      try {
+        const remote = await gistGet();
+        const { transactions: merged, deleted: mergedDel } =
+          mergeData(transactions, deletedIds, remote.transactions, remote.deleted);
+        const clientOld = idsStr(merged) !== idsStr(transactions);
+        const remoteOld = idsStr(merged) !== idsStr(remote.transactions) || dirty;
+        if (clientOld) { transactions = merged; deletedIds = mergedDel; lsSave(); renderAll(); }
+        if (remoteOld) { await gistPut({ transactions: merged, deleted: mergedDel }); localStorage.removeItem(LS_DIRTY); }
+        setServerStatus(true, 'gist');
+      } catch(e) { setServerStatus(false); }
+      setTimeout(doSync, 30000);
+      return;
+    }
+
+    // Локальный сервер
+    try {
+      const r   = await fetch(API + '?_t=' + Date.now(), { cache: 'no-store', signal: AbortSignal.timeout(4000) });
+      const raw = await r.json();
+      const serverTxs = Array.isArray(raw) ? raw : (raw.transactions || []);
+      const serverDel = Array.isArray(raw) ? [] : (raw.deleted      || []);
+      const { transactions: merged, deleted: mergedDel } = mergeData(transactions, deletedIds, serverTxs, serverDel);
+      const clientOld = idsStr(merged) !== idsStr(transactions);
+      const serverOld = idsStr(merged) !== idsStr(serverTxs) || dirty;
+      if (clientOld) { transactions = merged; deletedIds = mergedDel; lsSave(); renderAll(); }
+      if (serverOld) { transactions = merged; deletedIds = mergedDel; await pushToServer(); localStorage.removeItem(LS_DIRTY); }
+      setServerStatus(true, 'local');
+    } catch(e) { setServerStatus(false); }
+    setTimeout(doSync, 5000);
+  }
+
+  setTimeout(doSync, isGistOn() ? 30000 : 5000);
+}
+
+async function manualSync() {
+  const btn = document.getElementById('syncBtn');
+  btn.textContent = '⏳';
+  btn.disabled = true;
+  try {
+    const r   = await fetch(API + '?_t=' + Date.now(), { cache: 'no-store', signal: AbortSignal.timeout(4000) });
+    const raw = await r.json();
+    const serverTxs = Array.isArray(raw) ? raw : (raw.transactions || []);
+    const serverDel = Array.isArray(raw) ? [] : (raw.deleted      || []);
+    const { transactions: merged, deleted: mergedDel } = mergeData(transactions, deletedIds, serverTxs, serverDel);
+    const clientOutdated = idsStr(merged) !== idsStr(transactions);
+    const serverOutdated = idsStr(merged) !== idsStr(serverTxs);
+    transactions = merged;
+    deletedIds   = mergedDel;
+    lsSave();
+    if (serverOutdated) await pushToServer();
+    setServerStatus(true);
+    if (clientOutdated) { renderAll(); showToast('Данные обновлены'); }
+    else showToast('Уже актуально');
+  } catch(e) {
+    setServerStatus(false);
+    showToast('Сервер недоступен');
+  }
+  btn.textContent = '🔄 Обновить';
+  btn.disabled = false;
+}
+
+function renderAll() {
+  populateMonthFilter();
+  renderHome();
+  renderHistory();
+  renderStats();
+  const el = document.getElementById('totalCount');
+  if (el) el.textContent = transactions.length;
+}
+
+// ═══════════════════════════════════════════════════════
+// ИНИЦИАЛИЗАЦИЯ
+// ═══════════════════════════════════════════════════════
+// ── Облачная синхронизация — UI ───────────────────────────────────────
+async function setupCloudSync() {
+  const token  = document.getElementById('ghToken').value.trim();
+  const gistId = document.getElementById('ghGistId').value.trim();
+  if (!token) { showToast('Введите токен'); return; }
+
+  const btn = document.getElementById('btnConnectGist');
+  btn.textContent = '⏳ Подключение…'; btn.disabled = true;
+
+  localStorage.setItem(CFG_TOKEN, token);
+  try {
+    // Проверяем токен (прямо или через прокси)
+    let testOk = false, testMsg = '';
+    try {
+      const res = await ghCall('GET', '/user');
+      testOk = !!res.login;
+      testMsg = res.message || '';
+    } catch(e) { testMsg = e.message; }
+    if (!testOk) {
+      showToast('Токен неверный: ' + testMsg);
+      localStorage.removeItem(CFG_TOKEN);
+      btn.textContent = 'Подключить облако'; btn.disabled = false;
+      return;
+    }
+
+    let id = gistId;
+    if (!id) {
+      id = await gistCreate();
+      localStorage.setItem(CFG_GIST_ID, id);
+      showToast('Хранилище создано ✓');
+    } else {
+      // Сохранить gistId ДО вызова gistGet(), иначе getGistId() вернёт пустую строку
+      localStorage.setItem(CFG_GIST_ID, id);
+      // Загрузить и слить данные из существующего Gist
+      const remote = await gistGet();
+      const { transactions: merged, deleted: mergedDel } =
+        mergeData(transactions, deletedIds, remote.transactions, remote.deleted);
+      transactions = merged; deletedIds = mergedDel; lsSave();
+      if (idsStr(merged) !== idsStr(remote.transactions))
+        await gistPut({ transactions: merged, deleted: mergedDel });
+      renderAll();
+      showToast('Данные загружены из облака ✓');
+    }
+    renderCloudSyncUI();
+    // Отправляем токен на сервер — он автоматически опубликует на GitHub Pages
+    autoSetupPages(token);
+  } catch(e) {
+    showToast('Ошибка: ' + e.message);
+    localStorage.removeItem(CFG_TOKEN);
+  }
+  btn.textContent = 'Подключить облако'; btn.disabled = false;
+}
+
+async function autoSetupPages(token) {
+  try {
+    await fetch('/api/autosetup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    });
+    // Через 90 секунд проверяем — GitHub Pages уже может быть готов
+    setTimeout(fetchPagesUrl, 90000);
+  } catch(e) { /* сервер недоступен — ничего страшного */ }
+}
+
+async function fetchPagesUrl() {
+  if (getPagesUrl()) return;
+  try {
+    const r   = await fetch('/api/config?_t=' + Date.now(), { cache: 'no-store' });
+    const cfg = await r.json();
+    if (cfg.pages_url) {
+      localStorage.setItem(CFG_PAGES_URL, cfg.pages_url);
+      renderPagesSection();
+      showToast('Постоянная ссылка готова ✓');
+    }
+  } catch(e) {}
+}
+
+function disconnectGist() {
+  if (!confirm('Отключить облачную синхронизацию? Данные на устройстве сохранятся.')) return;
+  localStorage.removeItem(CFG_TOKEN);
+  localStorage.removeItem(CFG_GIST_ID);
+  renderCloudSyncUI();
+  showToast('Облако отключено');
+}
+
+// ── GitHub Pages публикация ───────────────────────────────────────────
+
+async function ghCallWith(token, method, path, body) {
+  const headers = {
+    'Authorization': `Bearer ${token}`,
+    'X-GitHub-Api-Version': '2022-11-28',
+    'Content-Type': 'application/json',
+    'Accept': 'application/vnd.github+json',
+  };
+  const r = await fetch('https://api.github.com' + path, {
+    method, headers, cache: 'no-store',
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error((data.message || r.status) + ' [' + r.status + ']');
+  return data;
+}
+
+async function uploadToRepo(token, owner, repo, path, content) {
+  let sha = null;
+  try {
+    const f = await ghCallWith(token, 'GET', `/repos/${owner}/${repo}/contents/${path}`);
+    sha = f.sha;
+  } catch(e) {}
+  const b64 = btoa(unescape(encodeURIComponent(content)));
+  await ghCallWith(token, 'PUT', `/repos/${owner}/${repo}/contents/${path}`, {
+    message: `Update ${path}`,
+    content: b64,
+    ...(sha ? { sha } : {}),
+  });
+}
+
+async function publishToGitHubPages() {
+  const token = (document.getElementById('pagesToken')?.value || '').trim() || getToken();
+  if (!token) { showToast('Введите токен'); return; }
+  const btn = document.getElementById('btnPublish');
+  if (btn) { btn.textContent = '⏳ Публикация…'; btn.disabled = true; }
+  try {
+    const user  = await ghCallWith(token, 'GET', '/user');
+    const owner = user.login;
+    const repo  = 'budget-app';
+
+    // Создаём репозиторий (игнорируем ошибку если уже существует)
+    try {
+      await ghCallWith(token, 'POST', '/user/repos', {
+        name: repo, description: 'Личный бюджет — мобильное приложение',
+        private: false, auto_init: true,
+      });
+      await new Promise(r => setTimeout(r, 3000));
+    } catch(e) { /* уже существует */ }
+
+    // manifest.json
+    await uploadToRepo(token, owner, repo, 'manifest.json', JSON.stringify({
+      name: 'Личный бюджет', short_name: 'Бюджет',
+      start_url: './', display: 'standalone',
+      background_color: '#F5F5F5', theme_color: '#1F4E79',
+    }));
+
+    // sw.js с правильными путями для любого хоста
+    const swContent = `const CACHE='budget-v5';
+const BASE=new URL('.',self.location).pathname.replace(/\\/$/,'');
+const SHELL=[BASE+'/index.html',BASE+'/manifest.json'];
+self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)));self.skipWaiting();});
+self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim();});
+self.addEventListener('fetch',e=>{const url=new URL(e.request.url);if(url.pathname.includes('/api/')||url.hostname==='api.github.com')return;e.respondWith(caches.match(e.request).then(cached=>{const net=fetch(e.request).then(res=>{if(res.ok)caches.open(CACHE).then(c=>c.put(e.request,res.clone()));return res;}).catch(()=>cached);return cached||net;}));});`;
+    await uploadToRepo(token, owner, repo, 'sw.js', swContent);
+
+    // index.html — берём исходник с сервера
+    let html;
+    try {
+      const r = await fetch('/index.html?_t=' + Date.now(), { cache: 'no-store' });
+      html = await r.text();
+    } catch(e) {
+      html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+    }
+    await uploadToRepo(token, owner, repo, 'index.html', html);
+
+    // Включаем GitHub Pages
+    try {
+      await ghCallWith(token, 'POST', `/repos/${owner}/${repo}/pages`, {
+        source: { branch: 'main', path: '/' },
+      });
+    } catch(e) { /* уже включено */ }
+
+    const pagesUrl = `https://${owner}.github.io/${repo}/`;
+    localStorage.setItem(CFG_PAGES_URL, pagesUrl);
+    renderCloudSyncUI();
+    showToast('Готово! Ссылка появится через 1-2 минуты ✓');
+  } catch(e) {
+    showToast('Ошибка: ' + e.message);
+  }
+  if (btn) { btn.textContent = '🌐 Опубликовать'; btn.disabled = false; }
+}
+
+function renderPagesSection() {
+  const el = document.getElementById('pagesSection');
+  if (!el) return;
+  const url = getPagesUrl();
+  if (url) {
+    const qr = 'https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=4&data=' + encodeURIComponent(url);
+    el.innerHTML = `<div style="background:#E8F5E9;border:1.5px solid #A5D6A7;border-radius:10px;padding:14px;text-align:center;">
+      <div style="font-size:13px;font-weight:700;color:#2E7D32;margin-bottom:6px;">🌐 Постоянная ссылка</div>
+      <div style="font-size:12px;word-break:break-all;color:var(--blue);font-weight:600;margin-bottom:10px;">${url}</div>
+      <img src="${qr}" width="160" height="160" style="border-radius:6px;margin-bottom:8px;">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">Откройте с любого телефона в любой сети</div>
+      <button onclick="copyPagesUrl()" style="width:100%;padding:9px;background:#C8E6C9;color:#2E7D32;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">📋 Скопировать ссылку</button>
+    </div>`;
+  } else {
+    el.innerHTML = `<div style="background:#FFF3E0;border:1.5px solid #FFCC80;border-radius:10px;padding:14px;">
+      <div style="font-size:13px;font-weight:700;color:#E65100;margin-bottom:4px;">🌐 Опубликуйте приложение в интернет</div>
+      <div style="font-size:12px;color:#795548;margin-bottom:8px;line-height:1.6;">
+        После публикации приложение будет доступно с любого телефона без Wi-Fi.<br>
+        Нужен токен с правом <b>public_repo</b> + <b>gist</b>.<br>
+        <a href="https://github.com/settings/tokens/new?scopes=gist,public_repo" target="_blank" style="color:var(--blue2);">➜ Создать токен на GitHub</a>
+      </div>
+      <input type="password" id="pagesToken" placeholder="ghp_... (с public_repo)"
+        style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;margin-bottom:8px;">
+      <button id="btnPublish" onclick="publishToGitHubPages()"
+        style="width:100%;padding:11px;background:#E65100;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">
+        🌐 Опубликовать
+      </button>
+    </div>`;
+  }
+}
+
+function copyPagesUrl() {
+  const url = getPagesUrl();
+  navigator.clipboard.writeText(url)
+    .then(() => showToast('Ссылка скопирована'))
+    .catch(() => prompt('Скопируйте ссылку:', url));
+}
+
+function copyGistLink() {
+  navigator.clipboard.writeText(getGistId())
+    .then(() => showToast('Gist ID скопирован'))
+    .catch(() => {
+      prompt('Скопируй Gist ID:', getGistId());
+    });
+}
+
+window.addEventListener('DOMContentLoaded', async () => {
+  // Регистрация сервис-воркера (офлайн-кеш страницы)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
+
+  const now = new Date();
+  document.getElementById('headerMonth').textContent =
+    now.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
+  document.getElementById('txDate').value = toDateInput(now);
+
+  setType('expense');
+  renderCloudSyncUI();
+  await loadData();
+  startAutoSync();
+  // Подтягиваем Pages URL с сервера (если ещё не сохранён локально)
+  fetchPagesUrl();
+});
+
+function toDateInput(d) {
+  return d.toISOString().split('T')[0];
+}
+
+function fmtDate(iso) {
+  if (!iso) return '';
+  const [y, m, day] = iso.split('-');
+  return `${day}.${m}.${y}`;
+}
+
+function fmtRub(n) {
+  return new Intl.NumberFormat('ru-RU', {
+    style: 'currency', currency: 'RUB', maximumFractionDigits: 0
+  }).format(n);
+}
+
+// ═══════════════════════════════════════════════════════
+// НАВИГАЦИЯ
+// ═══════════════════════════════════════════════════════
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+  if (name === 'home')    renderHome();
+  if (name === 'history') renderHistory();
+  if (name === 'stats')   renderStats();
+  if (name === 'export')  document.getElementById('totalCount').textContent = transactions.length;
+}
+
+// ═══════════════════════════════════════════════════════
+// ТИП И КАТЕГОРИИ
+// ═══════════════════════════════════════════════════════
+function setType(type) {
+  currentType = type;
+  document.getElementById('btnIncome').classList.toggle('active',  type === 'income');
+  document.getElementById('btnExpense').classList.toggle('active', type === 'expense');
+  fillCategories(type);
+}
+
+function fillCategories(type) {
+  const sel  = document.getElementById('category');
+  const cats = type === 'income' ? INCOME_CATS : EXPENSE_CATS;
+  sel.innerHTML = cats.map(c =>
+    `<option value="${c}">${(CAT_ICONS[c] || '•')} ${c}</option>`
+  ).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+// ДОБАВИТЬ ЗАПИСЬ
+// ═══════════════════════════════════════════════════════
+async function addTransaction(overrides) {
+  const amount = parseFloat(
+    overrides?.amount ?? document.getElementById('amount').value
+  );
+  if (!amount || amount <= 0) { showToast('Введите сумму'); return; }
+
+  const tx = {
+    id:          Date.now(),
+    type:        overrides?.type        ?? currentType,
+    category:    overrides?.category    ?? document.getElementById('category').value,
+    description: overrides?.description ?? document.getElementById('description').value.trim(),
+    amount:      amount,
+    date:        overrides?.date        ?? document.getElementById('txDate').value,
+  };
+
+  transactions.unshift(tx);
+  await saveData();
+
+  if (!overrides) {
+    document.getElementById('amount').value = '';
+    document.getElementById('description').value = '';
+  }
+
+  showToast('Запись добавлена ✓');
+  renderHome();
+}
+
+function quickSupermarket() {
+  const amount = prompt('Сумма чека супермаркета (₽):');
+  if (!amount || isNaN(amount)) return;
+  const store = prompt('Название магазина (необязательно):') || '';
+  addTransaction({
+    type:        'expense',
+    category:    'Супермаркет / гипермаркет',
+    description: store,
+    amount:      parseFloat(amount),
+    date:        toDateInput(new Date()),
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// ГЛАВНАЯ
+// ═══════════════════════════════════════════════════════
+function renderHome() {
+  const now  = new Date();
+  const month = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const monthTx = transactions.filter(t => t.date && t.date.startsWith(month));
+
+  const income  = monthTx.filter(t => t.type === 'income') .reduce((s,t) => s + t.amount, 0);
+  const expense = monthTx.filter(t => t.type === 'expense').reduce((s,t) => s + t.amount, 0);
+  const balance = income - expense;
+
+  document.getElementById('incomeAmt').textContent  = fmtRub(income);
+  document.getElementById('expenseAmt').textContent = fmtRub(expense);
+  const ba = document.getElementById('balanceAmt');
+  ba.textContent = fmtRub(balance);
+  ba.style.color = balance < 0 ? '#FFB3B3' : '#fff';
+
+  // Последние 10 записей
+  const list = document.getElementById('recentList');
+  const recent = transactions.slice(0, 10);
+  if (!recent.length) {
+    list.innerHTML = '<div class="empty-state"><span class="emoji">📋</span>Пока нет записей</div>';
+    return;
+  }
+  list.innerHTML = recent.map(t => txHTML(t, true)).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+// ИСТОРИЯ
+// ═══════════════════════════════════════════════════════
+function populateMonthFilter() {
+  const sel = document.getElementById('filterMonth');
+  const months = new Set(transactions.map(t => t.date ? t.date.slice(0,7) : ''));
+  const now = new Date();
+  const cur = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  months.add(cur);
+
+  const sorted = [...months].filter(Boolean).sort().reverse();
+  sel.innerHTML = sorted.map(m => {
+    const [y, mo] = m.split('-');
+    const label = new Date(y, mo-1).toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
+    return `<option value="${m}" ${m===cur?'selected':''}>${label}</option>`;
+  }).join('');
+}
+
+function renderHistory() {
+  populateMonthFilter();
+  const month    = document.getElementById('filterMonth')?.value || '';
+  const typeF    = document.getElementById('filterType')?.value  || '';
+  let filtered   = transactions;
+  if (month) filtered = filtered.filter(t => t.date && t.date.startsWith(month));
+  if (typeF) filtered = filtered.filter(t => t.type === typeF);
+
+  const list = document.getElementById('historyList');
+  if (!filtered.length) {
+    list.innerHTML = '<div class="empty-state"><span class="emoji">🔍</span>Нет записей за этот период</div>';
+    return;
+  }
+  list.innerHTML = filtered.map(t => txHTML(t, true)).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+// ЭЛЕМЕНТ ТРАНЗАКЦИИ
+// ═══════════════════════════════════════════════════════
+function txHTML(t, showDel) {
+  const icon    = CAT_ICONS[t.category] || (t.type === 'income' ? '💚' : '❌');
+  const isSup   = t.category === 'Супермаркет / гипермаркет';
+  const iconCls = isSup ? 'sup' : t.type === 'income' ? 'inc' : 'exp';
+  const amtCls  = t.type === 'income' ? 'inc' : 'exp';
+  const sign    = t.type === 'income' ? '+' : '−';
+  const desc    = t.description ? ` · ${t.description}` : '';
+
+  return `
+  <div class="tx-item" id="tx-${t.id}">
+    <div class="tx-icon ${iconCls}">${icon}</div>
+    <div class="tx-info">
+      <div class="tx-cat">${t.category}</div>
+      <div class="tx-meta">${fmtDate(t.date)}${desc}</div>
+    </div>
+    <div class="tx-amount ${amtCls}">${sign}${fmtRub(t.amount)}</div>
+    ${showDel ? `<button class="tx-del" onclick="deleteTx(${t.id})">✕</button>` : ''}
+  </div>`;
+}
+
+async function deleteTx(id) {
+  if (!confirm('Удалить запись?')) return;
+  transactions = transactions.filter(t => t.id !== id);
+  deletedIds.push(id);  // tombstone — чтобы другие устройства тоже удалили запись
+  await saveData();
+  renderHome();
+  renderHistory();
+  renderStats();
+  showToast('Удалено');
+}
+
+// ═══════════════════════════════════════════════════════
+// АНАЛИТИКА
+// ═══════════════════════════════════════════════════════
+function renderStats() {
+  const now   = new Date();
+  const month = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const exp   = transactions.filter(t => t.type === 'expense' && t.date?.startsWith(month));
+  const inc   = transactions.filter(t => t.type === 'income'  && t.date?.startsWith(month));
+
+  const totalExp = exp.reduce((s,t) => s+t.amount, 0);
+  const totalInc = inc.reduce((s,t) => s+t.amount, 0);
+
+  // Группировка расходов по категориям
+  const bycat = {};
+  exp.forEach(t => { bycat[t.category] = (bycat[t.category] || 0) + t.amount; });
+  const sorted = Object.entries(bycat).sort((a,b) => b[1]-a[1]);
+
+  const cards = document.getElementById('statCards');
+  if (!sorted.length) {
+    cards.innerHTML = '<div class="empty-state"><span class="emoji">📊</span>Нет данных за этот месяц</div>';
+    return;
+  }
+
+  const rows = sorted.map(([cat, amt]) => {
+    const pct  = totalExp > 0 ? (amt / totalExp * 100) : 0;
+    const icon = CAT_ICONS[cat] || '•';
+    return `
+    <div class="stat-row">
+      <span style="font-size:18px;width:26px">${icon}</span>
+      <span style="flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cat}</span>
+      <div class="bar-wrap"><div class="bar" style="width:${pct}%"></div></div>
+      <span class="val">${fmtRub(amt)}</span>
+    </div>`;
+  }).join('');
+
+  cards.innerHTML = `
+    <div class="stat-card">
+      <h3>Расходы по категориям · ${now.toLocaleDateString('ru-RU',{month:'long'})}</h3>
+      ${rows}
+    </div>
+    <div class="stat-card">
+      <h3>Сводка месяца</h3>
+      <div class="stat-row">
+        <span>💚 Доходы</span>
+        <span class="val" style="color:var(--green)">${fmtRub(totalInc)}</span>
+      </div>
+      <div class="stat-row">
+        <span>🔴 Расходы</span>
+        <span class="val" style="color:var(--red)">${fmtRub(totalExp)}</span>
+      </div>
+      <div class="stat-row">
+        <span>💰 Остаток</span>
+        <span class="val" style="color:${totalInc-totalExp>=0?'var(--green)':'var(--red)'}">
+          ${fmtRub(totalInc - totalExp)}
+        </span>
+      </div>
+      ${totalInc > 0 ? `
+      <div class="stat-row">
+        <span>📊 Норма сбережений</span>
+        <span class="val">${Math.round((totalInc-totalExp)/totalInc*100)}%</span>
+      </div>` : ''}
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+// ЭКСПОРТ / ИМПОРТ
+// ═══════════════════════════════════════════════════════
+function exportCSV() {
+  if (!transactions.length) { showToast('Нет данных для экспорта'); return; }
+  const BOM  = '\uFEFF';
+  const head = 'Дата;Тип;Категория;Описание;Сумма\n';
+  const rows = transactions.map(t =>
+    `${fmtDate(t.date)};${t.type==='income'?'Доход':'Расход'};${t.category};${t.description||''};${t.amount}`
+  ).join('\n');
+  download(BOM + head + rows, 'бюджет.csv', 'text/csv;charset=utf-8');
+  showToast('CSV скачан');
+}
+
+function exportJSON() {
+  download(JSON.stringify(transactions, null, 2), 'budget-backup.json', 'application/json');
+  showToast('Резервная копия сохранена');
+}
+
+function importJSON() {
+  document.getElementById('importFile').click();
+}
+
+function handleImport(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!Array.isArray(data)) throw new Error();
+      transactions = data;
+      deletedIds   = [];  // при импорте сбрасываем tombstones
+      await saveData();
+      renderHome(); renderHistory(); renderStats();
+      showToast(`Импортировано ${data.length} записей`);
+    } catch {
+      showToast('Ошибка: неверный файл');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+async function clearData() {
+  if (!confirm('Удалить ВСЕ записи? Это действие нельзя отменить.')) return;
+  transactions = [];
+  deletedIds   = [];
+  await saveData();
+  renderHome(); renderHistory(); renderStats();
+  document.getElementById('totalCount').textContent = 0;
+  showToast('Все данные удалены');
+}
+
+function download(content, filename, mime) {
+  const a   = document.createElement('a');
+  a.href    = URL.createObjectURL(new Blob([content], { type: mime }));
+  a.download = filename;
+  a.click();
+}
+
+// ═══════════════════════════════════════════════════════
+// УВЕДОМЛЕНИЕ
+// ═══════════════════════════════════════════════════════
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+</script>
+</body>
+</html>
